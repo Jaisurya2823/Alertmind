@@ -312,3 +312,5 @@ See `.env.example` for all configuration options with descriptions.
 ## License
 
 MIT License — see [LICENSE](LICENSE) for details.
+#   A l e r t m i n d  
+ 
