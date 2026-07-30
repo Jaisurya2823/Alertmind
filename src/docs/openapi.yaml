@@ -1,0 +1,202 @@
+openapi: 3.1.0
+info:
+  title: AlertMind API
+  description: AI-powered Security Alert Investigation Platform API
+  version: 1.0.0
+  contact:
+    name: AlertMind Support
+servers:
+  - url: /api/v1
+    description: API v1
+
+security:
+  - BearerAuth: []
+  - ApiKeyAuth: []
+
+paths:
+  /alerts:
+    post:
+      summary: Submit a security alert for AI investigation
+      tags: [Alerts]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rawInput, workspaceId]
+              properties:
+                rawInput:
+                  type: string
+                  minLength: 10
+                  description: Raw alert text, JSON, or log content
+                inputFormat:
+                  type: string
+                  enum: [JSON, SYSLOG, WINDOWS_EVENT, SYSMON, SIGMA, WAZUH, SPLUNK, ELASTIC, DEFENDER, CROWDSTRIKE, SENTINELONE, PLAIN_TEXT, CSV]
+                source:
+                  type: string
+                  enum: [MICROSOFT_DEFENDER, CROWDSTRIKE, SENTINEL, SPLUNK, ELASTIC, WAZUH, AWS_GUARDDUTY, GCP_SCC, SENTINELONE, SURICATA, ZEEK, SYSMON, MANUAL]
+                workspaceId:
+                  type: string
+                  format: uuid
+      responses:
+        '202':
+          description: Alert accepted for processing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: object
+                    properties:
+                      alertId: { type: string, format: uuid }
+                      investigationId: { type: string, format: uuid }
+                      jobId: { type: string }
+                      estimatedSeconds: { type: integer }
+        '401':
+          description: Authentication required
+        '422':
+          description: Validation failed
+        '429':
+          description: Rate limit exceeded
+
+    get:
+      summary: List alerts for a workspace
+      tags: [Alerts]
+      parameters:
+        - name: workspaceId
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+        - name: status
+          in: query
+          schema: { type: string, enum: [PENDING, PROCESSING, COMPLETED, FAILED, ARCHIVED] }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 25 }
+      responses:
+        '200':
+          description: Paginated list of alerts
+
+  /alerts/{id}:
+    get:
+      summary: Get a single alert with investigation status
+      tags: [Alerts]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Alert details
+        '404':
+          description: Alert not found
+
+  /investigations/{id}:
+    get:
+      summary: Get full investigation results
+      tags: [Investigations]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: workspaceId
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Complete investigation with all nested AI pipeline results
+
+  /investigations/{id}/status:
+    get:
+      summary: Lightweight investigation status polling
+      tags: [Investigations]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Investigation status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      status:
+                        type: string
+                        enum: [IN_PROGRESS, COMPLETED, FAILED, NEEDS_REVIEW]
+                      threatCategory: { type: string }
+                      processingTimeMs: { type: integer }
+
+  /reports/{investigationId}/pdf:
+    post:
+      summary: Generate and store PDF report
+      tags: [Reports]
+      parameters:
+        - name: investigationId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: PDF generated with download URL
+
+  /reports/{investigationId}/markdown:
+    get:
+      summary: Download report as Markdown
+      tags: [Reports]
+      parameters:
+        - name: investigationId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Markdown file
+          content:
+            text/markdown:
+              schema: { type: string }
+
+  /health:
+    get:
+      summary: Full readiness check (DB, Redis, AI provider)
+      tags: [Health]
+      security: []
+      responses:
+        '200':
+          description: All systems healthy
+        '503':
+          description: One or more systems unhealthy
+
+  /health/live:
+    get:
+      summary: Liveness probe
+      tags: [Health]
+      security: []
+      responses:
+        '200':
+          description: Process is alive
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-Api-Key

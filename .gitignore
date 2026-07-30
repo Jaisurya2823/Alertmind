@@ -1,0 +1,82 @@
+# ─── Secrets & Environment ──────────────────────────────────
+.env
+.env.local
+.env.production
+.env.staging
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+private.pem
+public.pem
+
+# ─── Node ───────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp
+.pnp.js
+
+# ─── Prisma ─────────────────────────────────────────────────
+# Keep migrations tracked
+# prisma/migrations/ is intentionally NOT ignored
+
+# ─── Build ──────────────────────────────────────────────────
+dist/
+build/
+.cache/
+
+# ─── Storage (runtime generated) ────────────────────────────
+storage/uploads/*
+storage/exports/*
+storage/reports/*
+storage/temp/*
+storage/cache/*
+!storage/uploads/.gitkeep
+!storage/exports/.gitkeep
+!storage/reports/.gitkeep
+!storage/temp/.gitkeep
+!storage/cache/.gitkeep
+
+# ─── Logs ───────────────────────────────────────────────────
+logs/
+*.log
+!logs/.gitkeep
+
+# ─── Testing ────────────────────────────────────────────────
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# ─── IDE ────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ─── Kubernetes Secrets ─────────────────────────────────────
+kubernetes/secret.yaml
+!kubernetes/secret.example.yaml
+
+# ─── Puppeteer ──────────────────────────────────────────────
+.local-chromium/
+
+# ─── OS ─────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+
+# ─── Temp ───────────────────────────────────────────────────
+*.tmp
+*.temp

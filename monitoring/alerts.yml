@@ -1,0 +1,80 @@
+groups:
+  - name: alertmind.sla
+    interval: 30s
+    rules:
+      # Alert if error rate exceeds 5% over 5 minutes
+      - alert: HighErrorRate
+        expr: |
+          rate(alertmind_http_requests_total{status_code=~"5.."}[5m])
+          /
+          rate(alertmind_http_requests_total[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "AlertMind HTTP error rate is {{ $value | humanizePercentage }}"
+          description: "More than 5% of requests are returning 5xx errors over the last 5 minutes."
+
+      # Alert if P95 latency exceeds 30 seconds
+      - alert: HighAPILatency
+        expr: |
+          histogram_quantile(0.95,
+            rate(alertmind_http_request_duration_seconds_bucket[5m])
+          ) > 30
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "AlertMind P95 API latency is {{ $value }}s"
+
+      # Alert if AI analysis exceeds 90 seconds P95
+      - alert: SlowAIAnalysis
+        expr: |
+          histogram_quantile(0.95,
+            rate(alertmind_ai_analysis_duration_seconds_bucket[10m])
+          ) > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "AlertMind AI analysis P95 latency is {{ $value }}s"
+
+  - name: alertmind.ai
+    rules:
+      # Alert if AI error rate is high
+      - alert: AIAgentErrors
+        expr: rate(alertmind_ai_errors_total[5m]) > 0.1
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "AlertMind AI agent errors: {{ $value }} errors/sec"
+
+      # Alert if many investigations are stuck in-progress
+      - alert: InvestigationBacklog
+        expr: alertmind_active_investigations > 50
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $value }} investigations are currently in progress"
+
+  - name: alertmind.infrastructure
+    rules:
+      # Alert if instance is down
+      - alert: AlertMindDown
+        expr: up{job="alertmind"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "AlertMind instance is down"
+
+      # Alert if queue depth is growing (backlog)
+      - alert: QueueBacklog
+        expr: alertmind_queue_depth{status="waiting"} > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Investigation queue has {{ $value }} waiting jobs"

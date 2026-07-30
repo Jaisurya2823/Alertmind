@@ -1,0 +1,40 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    service: alertmind
+    env: production
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+rule_files:
+  - "alerts.yml"
+
+scrape_configs:
+  # AlertMind application metrics (internal metrics port)
+  - job_name: alertmind
+    static_configs:
+      - targets: ["app:9090"]
+    metrics_path: /metrics
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  # PostgreSQL metrics (if pg_exporter deployed)
+  - job_name: postgres
+    static_configs:
+      - targets: ["postgres-exporter:9187"]
+    scrape_interval: 30s
+
+  # Redis metrics (if redis_exporter deployed)
+  - job_name: redis
+    static_configs:
+      - targets: ["redis-exporter:9121"]
+    scrape_interval: 15s
+
+  # Prometheus self-monitoring
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]

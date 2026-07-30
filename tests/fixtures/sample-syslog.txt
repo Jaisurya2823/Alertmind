@@ -1,0 +1,11 @@
+Nov 15 14:23:40 WORKSTATION-42 ossec: Alert Level: 12; Rule: 5503 - User missed the password more than one time; Location: WORKSTATION-42->/var/log/auth.log; Nov 15 14:23:38 WORKSTATION-42 sshd[12345]: Failed password for root from 203.0.113.45 port 54321 ssh2
+
+Nov 15 14:23:41 WORKSTATION-42 sshd[12345]: Failed password for root from 203.0.113.45 port 54321 ssh2
+Nov 15 14:23:42 WORKSTATION-42 sshd[12345]: Failed password for root from 203.0.113.45 port 54321 ssh2
+Nov 15 14:23:43 WORKSTATION-42 sshd[12345]: Failed password for root from 203.0.113.45 port 54321 ssh2
+Nov 15 14:23:44 WORKSTATION-42 sshd[12345]: Failed password for root from 203.0.113.45 port 54321 ssh2
+Nov 15 14:23:45 WORKSTATION-42 sshd[12346]: Failed password for admin from 203.0.113.45 port 54322 ssh2
+Nov 15 14:23:46 WORKSTATION-42 sshd[12347]: Failed password for ubuntu from 203.0.113.45 port 54323 ssh2
+Nov 15 14:23:50 WORKSTATION-42 sshd[12348]: Accepted publickey for deploy from 10.0.0.5 port 22 ssh2: RSA SHA256:abc123
+Nov 15 14:24:01 WORKSTATION-42 sudo: jsmith : TTY=pts/0 ; PWD=/home/jsmith ; USER=root ; COMMAND=/usr/bin/passwd root
+Nov 15 14:24:05 WORKSTATION-42 passwd[12400]: pam_unix(passwd:chauthtok): password changed for root

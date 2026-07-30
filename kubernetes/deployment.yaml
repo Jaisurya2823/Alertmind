@@ -1,0 +1,132 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alertmind
+  namespace: alertmind
+  labels:
+    app: alertmind
+    version: "1.0.0"
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: alertmind
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: alertmind
+        version: "1.0.0"
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      # Spread pods across nodes for availability
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values: [alertmind]
+              topologyKey: kubernetes.io/hostname
+
+      # Grace period: allow 60s for graceful shutdown
+      terminationGracePeriodSeconds: 60
+
+      serviceAccountName: alertmind
+
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+
+      containers:
+        - name: alertmind
+          image: your-registry/alertmind:1.0.0
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+            - name: metrics
+              containerPort: 9090
+              protocol: TCP
+
+          # Security context — least privilege
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: [ALL]
+
+          # Resource limits — prevents noisy neighbour issues
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "2000m"
+              memory: "2Gi"
+
+          # Environment from ConfigMap and Secrets
+          envFrom:
+            - configMapRef:
+                name: alertmind-config
+            - secretRef:
+                name: alertmind-secrets
+
+          # Liveness: is the process alive?
+          livenessProbe:
+            httpGet:
+              path: /api/health/live
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          # Readiness: are all dependencies healthy?
+          readinessProbe:
+            httpGet:
+              path: /api/health/ready
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            successThreshold: 1
+
+          # Startup: extra time for initial DB migration
+          startupProbe:
+            httpGet:
+              path: /api/health/live
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 12
+
+          # Persistent storage for temp files and exports
+          volumeMounts:
+            - name: storage-temp
+              mountPath: /app/storage/temp
+            - name: storage-exports
+              mountPath: /app/storage/exports
+
+      volumes:
+        - name: storage-temp
+          emptyDir:
+            sizeLimit: "1Gi"
+        - name: storage-exports
+          emptyDir:
+            sizeLimit: "2Gi"
+
+      imagePullSecrets:
+        - name: registry-credentials

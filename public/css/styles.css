@@ -1,0 +1,65 @@
+/* AlertMind — Custom Styles */
+
+/* ─── Scrollbar ────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #ffffff18; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #ffffff28; }
+
+/* ─── Selection ─────────────────────────────────────────────────────────────── */
+::selection { background: #e9456044; color: #fff; }
+
+/* ─── Markdown / Report rendering ──────────────────────────────────────────── */
+.prose h1 { font-size: 1.4rem; font-weight: 700; color: #e2e8f0; border-bottom: 2px solid #e9456033; padding-bottom: 0.5rem; margin: 1.5rem 0 1rem; }
+.prose h2 { font-size: 1.1rem; font-weight: 600; color: #cbd5e1; border-bottom: 1px solid #ffffff12; padding-bottom: 0.4rem; margin: 1.25rem 0 0.75rem; }
+.prose h3 { font-size: 0.95rem; font-weight: 600; color: #94a3b8; margin: 1rem 0 0.5rem; }
+.prose p { color: #cbd5e1; margin-bottom: 0.75rem; line-height: 1.7; font-size: 0.875rem; }
+.prose ul { list-style: disc; padding-left: 1.5rem; margin-bottom: 0.75rem; }
+.prose ol { list-style: decimal; padding-left: 1.5rem; margin-bottom: 0.75rem; }
+.prose li { color: #cbd5e1; margin-bottom: 0.25rem; font-size: 0.875rem; }
+.prose code { background: #0f3460; color: #e94560; padding: 0.15rem 0.4rem; border-radius: 0.25rem; font-size: 0.8rem; font-family: 'Courier New', monospace; }
+.prose pre { background: #0a1929; border: 1px solid #ffffff12; border-radius: 0.5rem; padding: 1rem; overflow-x: auto; margin: 0.75rem 0; }
+.prose pre code { background: none; color: #e2e8f0; padding: 0; font-size: 0.8rem; }
+.prose table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.8rem; }
+.prose thead tr { background: #0f346044; }
+.prose th { padding: 0.6rem 0.75rem; text-align: left; color: #94a3b8; font-weight: 600; border-bottom: 1px solid #ffffff18; }
+.prose td { padding: 0.5rem 0.75rem; color: #cbd5e1; border-bottom: 1px solid #ffffff08; }
+.prose tr:hover td { background: #ffffff05; }
+.prose blockquote { border-left: 3px solid #e94560; padding-left: 1rem; color: #94a3b8; font-style: italic; margin: 0.75rem 0; }
+.prose strong { color: #e2e8f0; font-weight: 600; }
+.prose a { color: #e94560; text-decoration: none; }
+.prose a:hover { text-decoration: underline; }
+.prose hr { border: none; border-top: 1px solid #ffffff12; margin: 1.5rem 0; }
+
+/* ─── Severity badges ───────────────────────────────────────────────────────── */
+.badge-critical { background: #dc262620; color: #f87171; border: 1px solid #dc262640; }
+.badge-high { background: #ea580c20; color: #fb923c; border: 1px solid #ea580c40; }
+.badge-medium { background: #ca8a0420; color: #fbbf24; border: 1px solid #ca8a0440; }
+.badge-low { background: #16a34a20; color: #4ade80; border: 1px solid #16a34a40; }
+.badge-info { background: #2563eb20; color: #60a5fa; border: 1px solid #2563eb40; }
+
+/* ─── Loading skeleton ──────────────────────────────────────────────────────── */
+@keyframes shimmer {
+  0% { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, #ffffff08 25%, #ffffff14 50%, #ffffff08 75%);
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite;
+  border-radius: 4px;
+}
+
+/* ─── Focus ring ────────────────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid #e94560;
+  outline-offset: 2px;
+}
+
+/* ─── Textarea font ─────────────────────────────────────────────────────────── */
+textarea, .font-mono {
+  font-family: 'Courier New', 'Cascadia Code', 'Fira Code', Consolas, monospace;
+}
+
+/* ─── Chart container ───────────────────────────────────────────────────────── */
+.chart-container { width: 100%; height: 200px; }

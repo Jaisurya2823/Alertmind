@@ -1,0 +1,104 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set image tag
+        id: tag
+        run: |
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            echo "TAG=$GITHUB_REF_NAME" >> $GITHUB_OUTPUT
+          else
+            echo "TAG=sha-${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.REGISTRY_URL }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.REGISTRY_URL }}/alertmind:${{ steps.tag.outputs.TAG }}
+            ${{ secrets.REGISTRY_URL }}/alertmind:latest
+          cache-from: type=registry,ref=${{ secrets.REGISTRY_URL }}/alertmind:cache
+          cache-to: type=registry,ref=${{ secrets.REGISTRY_URL }}/alertmind:cache,mode=max
+          platforms: linux/amd64
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: "v1.29.0"
+
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Update deployment image
+        run: |
+          kubectl set image deployment/alertmind \
+            alertmind=${{ secrets.REGISTRY_URL }}/alertmind:${{ steps.tag.outputs.TAG }} \
+            -n alertmind
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/alertmind \
+            -n alertmind \
+            --timeout=300s
+
+      - name: Verify deployment health
+        run: |
+          # Wait for readiness probe
+          sleep 15
+          kubectl get pods -n alertmind -l app=alertmind
+
+          # Check that at least one pod is running
+          READY=$(kubectl get deployment alertmind -n alertmind -o jsonpath='{.status.readyReplicas}')
+          if [ -z "$READY" ] || [ "$READY" -lt "1" ]; then
+            echo "Deployment failed — no ready replicas"
+            kubectl describe deployment alertmind -n alertmind
+            exit 1
+          fi
+          echo "Deployment successful — $READY replicas ready"
+
+      - name: Notify on failure
+        if: failure()
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "text": "🚨 AlertMind deployment FAILED on branch ${{ github.ref_name }}",
+              "attachments": [{"color": "danger", "text": "Commit: ${{ github.sha }}\nActor: ${{ github.actor }}"}]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

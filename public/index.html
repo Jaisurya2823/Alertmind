@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AlertMind — AI Security Alert Investigation Platform</title>
+  <meta name="description" content="Transform any security alert into a complete AI-powered investigation in under 60 seconds." />
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="manifest" href="/manifest.json" />
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { DEFAULT: '#e94560', dark: '#c73652' },
+            surface: { DEFAULT: '#16213e', dark: '#0f3460', deeper: '#0a1929' },
+          },
+          animation: {
+            'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            'fade-in': 'fadeIn 0.3s ease-in-out',
+          },
+          keyframes: {
+            fadeIn: { '0%': { opacity: '0', transform: 'translateY(8px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+          },
+        },
+      },
+    };
+  </script>
+
+  <!-- Alpine.js -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <!-- Marked.js (Markdown rendering) -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <!-- Prism.js (Code highlighting) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-core.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+  <!-- Dropzone.js -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/dropzone/5.9.3/dropzone.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dropzone/5.9.3/dropzone.min.js"></script>
+  <!-- ECharts -->
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body class="bg-[#0a1929] text-gray-100 min-h-screen font-sans antialiased" x-data="alertMind()" x-init="init()">
+
+  <!-- ─── Navbar ─────────────────────────────────────────────────────────── -->
+  <nav class="fixed top-0 left-0 right-0 z-50 bg-[#0f3460]/90 backdrop-blur border-b border-white/5">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg bg-brand flex items-center justify-center">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+        </div>
+        <span class="text-lg font-bold tracking-tight">AlertMind</span>
+        <span class="hidden sm:block text-xs text-gray-400 bg-white/5 px-2 py-0.5 rounded-full">AI Investigation Platform</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <template x-if="!user">
+          <div class="flex gap-2">
+            <button @click="showLogin = true" class="text-sm text-gray-300 hover:text-white transition px-3 py-1.5 rounded-lg hover:bg-white/5">Sign In</button>
+            <button @click="showRegister = true" class="text-sm bg-brand hover:bg-brand-dark text-white px-4 py-1.5 rounded-lg transition font-medium">Get Started</button>
+          </div>
+        </template>
+        <template x-if="user">
+          <div class="flex items-center gap-3">
+            <span class="hidden sm:block text-sm text-gray-400" x-text="user.email"></span>
+            <button @click="logout()" class="text-sm text-gray-400 hover:text-white transition">Sign Out</button>
+          </div>
+        </template>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ─── Main Content ───────────────────────────────────────────────────── -->
+  <main class="pt-16">
+
+    <!-- Landing / Analyze View -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-12">
+
+      <!-- Hero -->
+      <div class="text-center mb-10" x-show="!analysisResult && !isProcessing" x-transition>
+        <h1 class="text-4xl sm:text-5xl font-bold mb-4 bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
+          Investigate Any Security Alert<br />
+          <span class="text-brand">In Under 60 Seconds</span>
+        </h1>
+        <p class="text-gray-400 text-lg max-w-2xl mx-auto">
+          Paste a raw alert from any source. AlertMind AI explains it, maps MITRE ATT&amp;CK, extracts IOCs, generates hypotheses, and produces a complete incident report.
+        </p>
+        <div class="flex flex-wrap gap-2 justify-center mt-4">
+          <span class="text-xs text-gray-500 bg-white/5 px-3 py-1 rounded-full">Microsoft Defender</span>
+          <span class="text-xs text-gray-500 bg-white/5 px-3 py-1 rounded-full">CrowdStrike</span>
+          <span class="text-xs text-gray-500 bg-white/5 px-3 py-1 rounded-full">Splunk</span>
+          <span class="text-xs text-gray-500 bg-white/5 px-3 py-1 rounded-full">Elastic</span>
+          <span class="text-xs text-gray-500 bg-white/5 px-3 py-1 rounded-full">Wazuh</span>
+          <span class="text-xs text-gray-500 bg-white/5 px-3 py-1 rounded-full">Sysmon</span>
+          <span class="text-xs text-gray-500 bg-white/5 px-3 py-1 rounded-full">Windows Events</span>
+          <span class="text-xs text-gray-500 bg-white/5 px-3 py-1 rounded-full">Syslog</span>
+        </div>
+      </div>
+
+      <!-- Alert Input Card -->
+      <div class="bg-[#16213e] rounded-2xl border border-white/10 shadow-2xl p-6 mb-8" x-show="!analysisResult">
+
+        <!-- Tab: Paste / Upload -->
+        <div class="flex gap-1 mb-5 bg-black/20 p-1 rounded-xl w-fit">
+          <button @click="inputMode = 'paste'"
+            :class="inputMode === 'paste' ? 'bg-brand text-white' : 'text-gray-400 hover:text-white'"
+            class="px-5 py-2 rounded-lg text-sm font-medium transition">
+            Paste Alert
+          </button>
+          <button @click="inputMode = 'upload'"
+            :class="inputMode === 'upload' ? 'bg-brand text-white' : 'text-gray-400 hover:text-white'"
+            class="px-5 py-2 rounded-lg text-sm font-medium transition">
+            Upload File
+          </button>
+        </div>
+
+        <!-- Paste Mode -->
+        <div x-show="inputMode === 'paste'" x-transition>
+          <label class="block text-sm text-gray-400 mb-2">Paste your alert — JSON, syslog, Windows Event, plain text</label>
+          <textarea
+            x-model="alertInput"
+            placeholder='{"severity":"High","title":"Suspicious PowerShell Execution","hostname":"HOST-42","user":"jsmith","command":"powershell.exe -enc SQBtAHAA..."}'
+            class="w-full h-52 bg-black/30 border border-white/10 rounded-xl p-4 text-sm font-mono text-gray-200 placeholder-gray-600 focus:outline-none focus:border-brand/50 resize-none transition"
+          ></textarea>
+        </div>
+
+        <!-- Upload Mode -->
+        <div x-show="inputMode === 'upload'" x-transition>
+          <div id="dropzone" class="border-2 border-dashed border-white/10 rounded-xl p-10 text-center cursor-pointer hover:border-brand/40 transition">
+            <div class="text-gray-400">
+              <svg class="mx-auto w-12 h-12 mb-3 text-gray-600" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
+              </svg>
+              <p class="text-sm font-medium">Drop alert file here or click to browse</p>
+              <p class="text-xs text-gray-500 mt-1">.json .txt .log .xml .csv (max 10MB)</p>
+            </div>
+          </div>
+          <p x-show="uploadedFileName" class="text-xs text-green-400 mt-2" x-text="`✓ File selected: ${uploadedFileName}`"></p>
+        </div>
+
+        <!-- Analyze Button -->
+        <div class="flex items-center gap-4 mt-5">
+          <button
+            @click="analyzeAlert()"
+            :disabled="isProcessing || (!alertInput.trim() && !uploadedFile)"
+            class="flex items-center gap-2 bg-brand hover:bg-brand-dark disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold px-8 py-3 rounded-xl transition text-sm">
+            <svg class="w-4 h-4" :class="isProcessing ? 'animate-spin' : ''" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path x-show="!isProcessing" stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/>
+              <path x-show="isProcessing" stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/>
+            </svg>
+            <span x-text="isProcessing ? 'Analyzing...' : 'Analyze Alert'"></span>
+          </button>
+          <div x-show="isProcessing" class="flex items-center gap-3">
+            <div class="flex gap-1">
+              <div class="w-2 h-2 rounded-full bg-brand animate-bounce" style="animation-delay:0s"></div>
+              <div class="w-2 h-2 rounded-full bg-brand animate-bounce" style="animation-delay:0.15s"></div>
+              <div class="w-2 h-2 rounded-full bg-brand animate-bounce" style="animation-delay:0.3s"></div>
+            </div>
+            <span class="text-sm text-gray-400" x-text="processingStage"></span>
+          </div>
+          <p x-show="errorMessage" class="text-sm text-red-400" x-text="errorMessage"></p>
+        </div>
+      </div>
+
+      <!-- ─── Analysis Results ─────────────────────────────────────────── -->
+      <div x-show="analysisResult" x-transition class="space-y-6 animate-fade-in">
+
+        <!-- Results Header -->
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h2 class="text-xl font-bold">Investigation Complete</h2>
+            <p class="text-sm text-gray-400" x-text="`Processed in ${analysisResult?.processingTimeMs ? (analysisResult.processingTimeMs/1000).toFixed(1) + 's' : 'N/A'} · ${analysisResult?.modelUsed || ''}`"></p>
+          </div>
+          <div class="flex gap-2">
+            <button @click="resetAnalysis()" class="text-sm border border-white/10 hover:border-white/20 text-gray-300 px-4 py-2 rounded-lg transition">
+              New Alert
+            </button>
+            <button @click="downloadMarkdown()" class="text-sm bg-white/5 hover:bg-white/10 text-gray-200 px-4 py-2 rounded-lg transition flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+              Markdown
+            </button>
+            <button @click="generatePdf()" class="text-sm bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded-lg transition flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m.75 12l3 3m0 0l3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
+              Export PDF
+            </button>
+          </div>
+        </div>
+
+        <!-- Severity Banner -->
+        <div class="rounded-xl p-4 border flex items-center gap-4"
+          :class="{
+            'bg-red-950/40 border-red-700/40': analysisResult?.riskAssessment?.severity === 'CRITICAL',
+            'bg-orange-950/40 border-orange-700/40': analysisResult?.riskAssessment?.severity === 'HIGH',
+            'bg-yellow-950/40 border-yellow-700/40': analysisResult?.riskAssessment?.severity === 'MEDIUM',
+            'bg-green-950/40 border-green-700/40': analysisResult?.riskAssessment?.severity === 'LOW',
+            'bg-blue-950/40 border-blue-700/40': analysisResult?.riskAssessment?.severity === 'INFORMATIONAL',
+          }">
+          <div class="text-3xl font-black"
+            :class="{
+              'text-red-400': analysisResult?.riskAssessment?.severity === 'CRITICAL',
+              'text-orange-400': analysisResult?.riskAssessment?.severity === 'HIGH',
+              'text-yellow-400': analysisResult?.riskAssessment?.severity === 'MEDIUM',
+              'text-green-400': analysisResult?.riskAssessment?.severity === 'LOW',
+              'text-blue-400': analysisResult?.riskAssessment?.severity === 'INFORMATIONAL',
+            }"
+            x-text="analysisResult?.riskAssessment?.severity || 'UNKNOWN'">
+          </div>
+          <div>
+            <p class="font-semibold text-white" x-text="analysisResult?.threatCategory"></p>
+            <p class="text-sm text-gray-300" x-text="analysisResult?.explanation?.slice(0, 200) + '...'"></p>
+          </div>
+        </div>
+
+        <!-- Results Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+          <!-- MITRE ATT&CK -->
+          <div class="bg-[#16213e] rounded-xl border border-white/10 p-5">
+            <h3 class="font-semibold mb-4 flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-red-400"></span>
+              MITRE ATT&CK Mapping
+            </h3>
+            <template x-for="m in analysisResult?.mitreMappings || []" :key="m.id">
+              <div class="mb-3 p-3 bg-black/20 rounded-lg border border-white/5">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-xs font-mono text-brand" x-text="m.techniqueId"></span>
+                  <span class="text-xs text-gray-500" x-text="`${Math.round(m.confidence * 100)}% confidence`"></span>
+                </div>
+                <p class="text-sm font-medium" x-text="m.techniqueName"></p>
+                <p class="text-xs text-gray-500" x-text="m.tacticName"></p>
+                <p class="text-xs text-gray-400 mt-1" x-text="m.reasoning?.slice(0, 120) + '...'"></p>
+              </div>
+            </template>
+            <p x-show="!analysisResult?.mitreMappings?.length" class="text-sm text-gray-500">No techniques identified</p>
+          </div>
+
+          <!-- Hypotheses -->
+          <div class="bg-[#16213e] rounded-xl border border-white/10 p-5">
+            <h3 class="font-semibold mb-4 flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-blue-400"></span>
+              Investigation Hypotheses
+            </h3>
+            <template x-for="(h, idx) in analysisResult?.hypotheses || []" :key="h.id">
+              <div class="mb-3 p-3 bg-black/20 rounded-lg border border-white/5">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs font-semibold text-gray-400" x-text="`Hypothesis ${idx + 1}`"></span>
+                  <span class="text-xs font-bold"
+                    :class="h.confidence > 0.7 ? 'text-orange-400' : h.confidence > 0.4 ? 'text-yellow-400' : 'text-green-400'"
+                    x-text="`${Math.round(h.confidence * 100)}%`">
+                  </span>
+                </div>
+                <p class="text-sm text-gray-200" x-text="h.text?.slice(0, 200) + '...'"></p>
+              </div>
+            </template>
+          </div>
+
+          <!-- Entities & IOCs -->
+          <div class="bg-[#16213e] rounded-xl border border-white/10 p-5">
+            <h3 class="font-semibold mb-4 flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-yellow-400"></span>
+              Extracted IOCs & Entities
+            </h3>
+            <div class="space-y-2 max-h-64 overflow-y-auto pr-2">
+              <template x-for="ioc in analysisResult?.iocs?.slice(0, 15) || []" :key="ioc.id">
+                <div class="flex items-center justify-between text-sm py-1.5 border-b border-white/5">
+                  <span class="text-xs bg-white/5 px-2 py-0.5 rounded text-gray-400 font-mono" x-text="ioc.type"></span>
+                  <span class="font-mono text-xs text-gray-200 ml-2 flex-1 text-right truncate" x-text="ioc.value"></span>
+                </div>
+              </template>
+              <p x-show="!analysisResult?.iocs?.length" class="text-sm text-gray-500">No IOCs identified</p>
+            </div>
+          </div>
+
+          <!-- Risk Assessment -->
+          <div class="bg-[#16213e] rounded-xl border border-white/10 p-5">
+            <h3 class="font-semibold mb-4 flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-purple-400"></span>
+              Risk Assessment
+            </h3>
+            <template x-if="analysisResult?.riskAssessment">
+              <div class="space-y-3">
+                <div class="flex justify-between items-center">
+                  <span class="text-sm text-gray-400">Likelihood</span>
+                  <div class="flex items-center gap-2">
+                    <div class="w-24 h-1.5 bg-black/30 rounded-full overflow-hidden">
+                      <div class="h-full bg-orange-400 rounded-full" :style="`width:${analysisResult.riskAssessment.likelihood * 100}%`"></div>
+                    </div>
+                    <span class="text-sm font-mono" x-text="`${Math.round(analysisResult.riskAssessment.likelihood * 100)}%`"></span>
+                  </div>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-sm text-gray-400">Impact</span>
+                  <div class="flex items-center gap-2">
+                    <div class="w-24 h-1.5 bg-black/30 rounded-full overflow-hidden">
+                      <div class="h-full bg-red-400 rounded-full" :style="`width:${analysisResult.riskAssessment.impact * 100}%`"></div>
+                    </div>
+                    <span class="text-sm font-mono" x-text="`${Math.round(analysisResult.riskAssessment.impact * 100)}%`"></span>
+                  </div>
+                </div>
+                <p class="text-sm text-gray-300 mt-3" x-text="analysisResult.riskAssessment.businessImpact?.slice(0, 200) + '...'"></p>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- Investigation Checklist -->
+        <div class="bg-[#16213e] rounded-xl border border-white/10 p-5" x-show="analysisResult?.recommendations?.length">
+          <h3 class="font-semibold mb-4 flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-green-400"></span>
+            Recommended Actions
+          </h3>
+          <div class="space-y-2">
+            <template x-for="(rec, idx) in analysisResult?.recommendations?.slice(0, 8) || []" :key="rec.id">
+              <div class="flex items-start gap-3 p-3 bg-black/20 rounded-lg">
+                <span class="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
+                  :class="{
+                    'bg-red-500/20 text-red-400': rec.priority === 'CRITICAL',
+                    'bg-orange-500/20 text-orange-400': rec.priority === 'HIGH',
+                    'bg-yellow-500/20 text-yellow-400': rec.priority === 'MEDIUM',
+                    'bg-green-500/20 text-green-400': rec.priority === 'LOW',
+                  }"
+                  x-text="idx + 1">
+                </span>
+                <div class="flex-1">
+                  <div class="flex items-center gap-2 mb-0.5">
+                    <span class="text-xs text-gray-500" x-text="rec.category"></span>
+                    <span class="text-xs font-medium"
+                      :class="{
+                        'text-red-400': rec.priority === 'CRITICAL',
+                        'text-orange-400': rec.priority === 'HIGH',
+                        'text-yellow-400': rec.priority === 'MEDIUM',
+                        'text-green-400': rec.priority === 'LOW',
+                      }"
+                      x-text="rec.priority">
+                    </span>
+                  </div>
+                  <p class="text-sm text-gray-200" x-text="rec.text"></p>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- Full Report -->
+        <div class="bg-[#16213e] rounded-xl border border-white/10 p-5">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-brand"></span>
+              Incident Report
+            </h3>
+            <button @click="reportExpanded = !reportExpanded" class="text-xs text-gray-400 hover:text-white transition" x-text="reportExpanded ? 'Collapse' : 'Expand Full Report'"></button>
+          </div>
+          <div x-show="reportExpanded" x-transition>
+            <div class="prose prose-invert prose-sm max-w-none" id="report-content"></div>
+          </div>
+          <div x-show="!reportExpanded">
+            <p class="text-sm text-gray-400" x-text="analysisResult?.report?.executiveSummary?.slice(0, 300) + '...'"></p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

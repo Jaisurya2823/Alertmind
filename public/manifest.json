@@ -1,0 +1,19 @@
+{
+  "name": "AlertMind — AI Security Investigation Platform",
+  "short_name": "AlertMind",
+  "description": "Transform any security alert into a complete AI-powered investigation in under 60 seconds.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a1929",
+  "theme_color": "#0f3460",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "any",
+      "type": "image/x-icon"
+    }
+  ],
+  "categories": ["security", "productivity", "utilities"],
+  "lang": "en-US",
+  "orientation": "any"
+}

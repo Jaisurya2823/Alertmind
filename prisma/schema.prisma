@@ -1,0 +1,579 @@
+// AlertMind — Prisma Schema
+// Database: PostgreSQL 17
+// Extensions: pgvector (semantic search), pg_trgm (full-text search)
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [pgvector(map: "vector", schema: "extensions"), pg_trgm(map: "pg_trgm", schema: "extensions"), uuid_ossp(map: "uuid-ossp", schema: "extensions")]
+}
+
+// ─── Organization ────────────────────────────────────────────────────────────
+model Organization {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String   @db.VarChar(255)
+  slug        String   @unique @db.VarChar(100)
+  plan        Plan     @default(FREE)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  users      User[]
+  workspaces Workspace[]
+  apiKeys    ApiKey[]
+  settings   OrganizationSettings?
+  billing    Billing?
+
+  @@index([slug])
+  @@index([plan])
+  @@map("organizations")
+}
+
+// ─── User ────────────────────────────────────────────────────────────────────
+model User {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  email          String   @unique @db.VarChar(255)
+  passwordHash   String   @map("password_hash") @db.Text
+  name           String   @db.VarChar(255)
+  role           Role     @default(ANALYST)
+  isActive       Boolean  @default(true) @map("is_active")
+  emailVerified  Boolean  @default(false) @map("email_verified")
+  lastLoginAt    DateTime? @map("last_login_at")
+  mfaEnabled     Boolean  @default(false) @map("mfa_enabled")
+  mfaSecret      String?  @map("mfa_secret") @db.Text
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  sessions       Session[]
+  workspaceUsers WorkspaceUser[]
+  auditLogs      AuditLog[]
+  notifications  Notification[]
+
+  @@index([organizationId])
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+// ─── Session (Better Auth) ───────────────────────────────────────────────────
+model Session {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  token     String   @unique @db.VarChar(512)
+  expiresAt DateTime @map("expires_at")
+  ipAddress String?  @map("ip_address") @db.VarChar(45)
+  userAgent String?  @map("user_agent") @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+// ─── Workspace ───────────────────────────────────────────────────────────────
+model Workspace {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  name           String   @db.VarChar(255)
+  description    String?  @db.Text
+  isDefault      Boolean  @default(false) @map("is_default")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workspaceUsers WorkspaceUser[]
+  alerts         Alert[]
+  connectors     Connector[]
+
+  @@index([organizationId])
+  @@map("workspaces")
+}
+
+// ─── WorkspaceUser ───────────────────────────────────────────────────────────
+model WorkspaceUser {
+  userId      String        @map("user_id") @db.Uuid
+  workspaceId String        @map("workspace_id") @db.Uuid
+  role        WorkspaceRole @default(MEMBER)
+  joinedAt    DateTime      @default(now()) @map("joined_at")
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@id([userId, workspaceId])
+  @@index([workspaceId])
+  @@map("workspace_users")
+}
+
+// ─── Alert ───────────────────────────────────────────────────────────────────
+model Alert {
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspaceId String      @map("workspace_id") @db.Uuid
+  rawInput    String      @map("raw_input") @db.Text
+  inputFormat AlertFormat @map("input_format")
+  source      AlertSource? @map("alert_source")
+  severity    Severity?
+  status      AlertStatus @default(PENDING)
+  submittedBy String?     @map("submitted_by") @db.Uuid
+  ipAddress   String?     @map("ip_address") @db.VarChar(45)
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  workspace     Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  investigation Investigation?
+
+  @@index([workspaceId])
+  @@index([status])
+  @@index([severity])
+  @@index([source])
+  @@index([createdAt])
+  @@map("alerts")
+}
+
+// ─── Investigation ───────────────────────────────────────────────────────────
+model Investigation {
+  id              String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  alertId         String              @unique @map("alert_id") @db.Uuid
+  status          InvestigationStatus @default(IN_PROGRESS)
+  parsedAlert     Json                @map("parsed_alert")
+  explanation     String?             @db.Text
+  threatCategory  String?             @map("threat_category") @db.VarChar(100)
+  modelUsed       String?             @map("model_used") @db.VarChar(100)
+  processingTimeMs Int?               @map("processing_time_ms")
+  tokenCount      Int?                @map("token_count")
+  errorMessage    String?             @map("error_message") @db.Text
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+
+  alert           Alert               @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  entities        ExtractedEntity[]
+  iocs            IOC[]
+  mitreMappings   MitreMapping[]
+  hypotheses      Hypothesis[]
+  timelineEvents  TimelineEvent[]
+  riskAssessment  RiskAssessment?
+  recommendations Recommendation[]
+  report          Report?
+
+  @@index([status])
+  @@index([threatCategory])
+  @@index([createdAt])
+  @@map("investigations")
+}
+
+// ─── ExtractedEntity ─────────────────────────────────────────────────────────
+model ExtractedEntity {
+  id              String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  investigationId String     @map("investigation_id") @db.Uuid
+  type            EntityType
+  value           String     @db.VarChar(2048)
+  context         String?    @db.Text
+  confidence      Float?
+  createdAt       DateTime   @default(now()) @map("created_at")
+
+  investigation Investigation @relation(fields: [investigationId], references: [id], onDelete: Cascade)
+
+  @@index([investigationId])
+  @@index([type])
+  @@index([value])
+  @@map("extracted_entities")
+}
+
+// ─── IOC ─────────────────────────────────────────────────────────────────────
+model IOC {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  investigationId String   @map("investigation_id") @db.Uuid
+  type            IOCType
+  value           String   @db.VarChar(2048)
+  malicious       Boolean?
+  confidence      Float?
+  enrichmentSource String? @map("enrichment_source") @db.VarChar(100)
+  tlp             TLP      @default(AMBER)
+  enrichmentData  Json?    @map("enrichment_data")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  investigation Investigation @relation(fields: [investigationId], references: [id], onDelete: Cascade)
+
+  @@index([investigationId])
+  @@index([type])
+  @@index([value])
+  @@index([malicious])
+  @@map("iocs")
+}
+
+// ─── MitreMapping ────────────────────────────────────────────────────────────
+model MitreMapping {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  investigationId String   @map("investigation_id") @db.Uuid
+  techniqueId     String   @map("technique_id") @db.VarChar(20)
+  techniqueName   String   @map("technique_name") @db.VarChar(255)
+  tacticId        String   @map("tactic_id") @db.VarChar(20)
+  tacticName      String   @map("tactic_name") @db.VarChar(100)
+  subTechniqueId  String?  @map("sub_technique_id") @db.VarChar(25)
+  subTechniqueName String? @map("sub_technique_name") @db.VarChar(255)
+  confidence      Float
+  reasoning       String?  @db.Text
+  killChainPhase  String?  @map("kill_chain_phase") @db.VarChar(100)
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  investigation Investigation @relation(fields: [investigationId], references: [id], onDelete: Cascade)
+
+  @@index([investigationId])
+  @@index([techniqueId])
+  @@map("mitre_mappings")
+}
+
+// ─── Hypothesis ──────────────────────────────────────────────────────────────
+model Hypothesis {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  investigationId String   @map("investigation_id") @db.Uuid
+  text            String   @db.Text
+  confidence      Float
+  evidence        Json?
+  ordering        Int      @map("ordering")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  investigation Investigation @relation(fields: [investigationId], references: [id], onDelete: Cascade)
+
+  @@index([investigationId])
+  @@map("hypotheses")
+}
+
+// ─── TimelineEvent ───────────────────────────────────────────────────────────
+model TimelineEvent {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  investigationId String    @map("investigation_id") @db.Uuid
+  eventTimestamp  DateTime? @map("event_timestamp")
+  event           String    @db.Text
+  source          String?   @db.VarChar(100)
+  ordering        Int       @map("ordering")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  investigation Investigation @relation(fields: [investigationId], references: [id], onDelete: Cascade)
+
+  @@index([investigationId])
+  @@index([eventTimestamp])
+  @@map("timeline_events")
+}
+
+// ─── RiskAssessment ──────────────────────────────────────────────────────────
+model RiskAssessment {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  investigationId String   @unique @map("investigation_id") @db.Uuid
+  severity        Severity
+  likelihood      Float
+  impact          Float
+  confidence      Float
+  businessImpact  String?  @map("business_impact") @db.Text
+  justification   String?  @db.Text
+  cvssScore       Float?   @map("cvss_score")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  investigation Investigation @relation(fields: [investigationId], references: [id], onDelete: Cascade)
+
+  @@index([severity])
+  @@map("risk_assessments")
+}
+
+// ─── Recommendation ──────────────────────────────────────────────────────────
+model Recommendation {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  investigationId String   @map("investigation_id") @db.Uuid
+  text            String   @db.Text
+  priority        Priority
+  category        String   @db.VarChar(100)
+  commands        Json?
+  ordering        Int      @map("ordering")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  investigation Investigation @relation(fields: [investigationId], references: [id], onDelete: Cascade)
+
+  @@index([investigationId])
+  @@index([priority])
+  @@map("recommendations")
+}
+
+// ─── Report ──────────────────────────────────────────────────────────────────
+model Report {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  investigationId  String   @unique @map("investigation_id") @db.Uuid
+  executiveSummary String   @map("executive_summary") @db.Text
+  technicalSummary String   @map("technical_summary") @db.Text
+  markdownContent  String   @map("markdown_content") @db.Text
+  htmlContent      String?  @map("html_content") @db.Text
+  pdfStoragePath   String?  @map("pdf_storage_path") @db.VarChar(512)
+  exportedAt       DateTime? @map("exported_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  investigation Investigation @relation(fields: [investigationId], references: [id], onDelete: Cascade)
+
+  @@map("reports")
+}
+
+// ─── ApiKey ──────────────────────────────────────────────────────────────────
+model ApiKey {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  name           String    @db.VarChar(100)
+  keyHash        String    @unique @map("key_hash") @db.VarChar(255)
+  keyPrefix      String    @map("key_prefix") @db.VarChar(12)
+  permissions    Json
+  isActive       Boolean   @default(true) @map("is_active")
+  lastUsedAt     DateTime? @map("last_used_at")
+  expiresAt      DateTime? @map("expires_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([keyHash])
+  @@map("api_keys")
+}
+
+// ─── Connector ───────────────────────────────────────────────────────────────
+model Connector {
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspaceId    String        @map("workspace_id") @db.Uuid
+  type           ConnectorType
+  name           String        @db.VarChar(100)
+  // Config is AES-256-GCM encrypted at application layer before storage
+  configEncrypted String       @map("config_encrypted") @db.Text
+  enabled        Boolean       @default(true)
+  lastSyncAt     DateTime?     @map("last_sync_at")
+  syncStatus     String?       @map("sync_status") @db.VarChar(50)
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([type])
+  @@map("connectors")
+}
+
+// ─── AuditLog ────────────────────────────────────────────────────────────────
+model AuditLog {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String?  @map("user_id") @db.Uuid
+  action     String   @db.VarChar(100)
+  resource   String   @db.VarChar(100)
+  resourceId String?  @map("resource_id") @db.Uuid
+  ipAddress  String?  @map("ip_address") @db.VarChar(45)
+  userAgent  String?  @map("user_agent") @db.Text
+  metadata   Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([action])
+  @@index([resource])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ─── Notification ────────────────────────────────────────────────────────────
+model Notification {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  type      String   @db.VarChar(50)
+  title     String   @db.VarChar(255)
+  message   String   @db.Text
+  isRead    Boolean  @default(false) @map("is_read")
+  metadata  Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+// ─── OrganizationSettings ────────────────────────────────────────────────────
+model OrganizationSettings {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String   @unique @map("organization_id") @db.Uuid
+  aiModel        String   @default("llama-3.3-70b-versatile") @map("ai_model") @db.VarChar(100)
+  retentionDays  Int      @default(90) @map("retention_days")
+  webhookUrl     String?  @map("webhook_url") @db.VarChar(512)
+  notifyOnHigh   Boolean  @default(true) @map("notify_on_high")
+  notifyOnCritical Boolean @default(true) @map("notify_on_critical")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("organization_settings")
+}
+
+// ─── Billing ─────────────────────────────────────────────────────────────────
+model Billing {
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId      String   @unique @map("organization_id") @db.Uuid
+  plan                Plan     @default(FREE)
+  investigationsUsed  Int      @default(0) @map("investigations_used")
+  investigationsLimit Int      @default(100) @map("investigations_limit")
+  billingCycleStart   DateTime @default(now()) @map("billing_cycle_start")
+  stripeCustomerId    String?  @map("stripe_customer_id") @db.VarChar(100)
+  stripeSubscriptionId String? @map("stripe_subscription_id") @db.VarChar(100)
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("billing")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum Plan {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  ANALYST
+  VIEWER
+}
+
+enum WorkspaceRole {
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+enum AlertFormat {
+  JSON
+  SYSLOG
+  WINDOWS_EVENT
+  SYSMON
+  SIGMA
+  WAZUH
+  SPLUNK
+  ELASTIC
+  DEFENDER
+  CROWDSTRIKE
+  SENTINELONE
+  PLAIN_TEXT
+  CSV
+}
+
+enum AlertSource {
+  MICROSOFT_DEFENDER
+  CROWDSTRIKE
+  SENTINEL
+  SPLUNK
+  ELASTIC
+  WAZUH
+  AWS_GUARDDUTY
+  GCP_SCC
+  SENTINELONE
+  SURICATA
+  ZEEK
+  SYSMON
+  MANUAL
+}
+
+enum Severity {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+  INFORMATIONAL
+}
+
+enum AlertStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  ARCHIVED
+}
+
+enum InvestigationStatus {
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  NEEDS_REVIEW
+}
+
+enum EntityType {
+  IP_ADDRESS
+  DOMAIN
+  URL
+  FILE_HASH
+  FILE_PATH
+  USERNAME
+  HOSTNAME
+  PROCESS
+  COMMAND
+  REGISTRY_KEY
+  EMAIL
+  CERTIFICATE
+  PORT
+  PROTOCOL
+  CVE
+  PACKAGE
+}
+
+enum IOCType {
+  IP_ADDRESS
+  DOMAIN
+  URL
+  MD5
+  SHA1
+  SHA256
+  EMAIL
+  FILENAME
+  REGISTRY_KEY
+  CERTIFICATE_HASH
+  ASN
+  USER_AGENT
+}
+
+enum TLP {
+  RED
+  AMBER
+  GREEN
+  WHITE
+}
+
+enum Priority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum ConnectorType {
+  SPLUNK
+  SENTINEL
+  DEFENDER
+  CROWDSTRIKE
+  ELASTIC
+  AWS
+  AZURE
+  GCP
+  OKTA
+  JIRA
+  SERVICENOW
+  SLACK
+  TEAMS
+  PAGERDUTY
+}

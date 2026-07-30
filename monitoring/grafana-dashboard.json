@@ -1,0 +1,118 @@
+{
+  "title": "AlertMind — Operations Dashboard",
+  "uid": "alertmind-ops",
+  "version": 1,
+  "schemaVersion": 38,
+  "tags": ["alertmind", "security", "ai"],
+  "timezone": "browser",
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Investigations / Hour",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
+      "targets": [{
+        "expr": "increase(alertmind_investigations_total[1h])",
+        "legendFormat": "Total"
+      }]
+    },
+    {
+      "id": 2,
+      "title": "Active Investigations",
+      "type": "stat",
+      "gridPos": { "x": 4, "y": 0, "w": 4, "h": 4 },
+      "targets": [{
+        "expr": "alertmind_active_investigations",
+        "legendFormat": "Active"
+      }]
+    },
+    {
+      "id": 3,
+      "title": "AI Analysis P95 Latency",
+      "type": "stat",
+      "gridPos": { "x": 8, "y": 0, "w": 4, "h": 4 },
+      "targets": [{
+        "expr": "histogram_quantile(0.95, rate(alertmind_ai_analysis_duration_seconds_bucket[5m]))",
+        "legendFormat": "P95 (s)"
+      }]
+    },
+    {
+      "id": 4,
+      "title": "HTTP Error Rate",
+      "type": "stat",
+      "gridPos": { "x": 12, "y": 0, "w": 4, "h": 4 },
+      "targets": [{
+        "expr": "rate(alertmind_http_requests_total{status_code=~\"5..\"}[5m]) / rate(alertmind_http_requests_total[5m]) * 100",
+        "legendFormat": "5xx %"
+      }]
+    },
+    {
+      "id": 5,
+      "title": "AI Analysis Duration Distribution",
+      "type": "histogram",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "targets": [{
+        "expr": "rate(alertmind_ai_analysis_duration_seconds_bucket[5m])",
+        "legendFormat": "{{le}}"
+      }]
+    },
+    {
+      "id": 6,
+      "title": "Investigations by Severity",
+      "type": "piechart",
+      "gridPos": { "x": 12, "y": 4, "w": 6, "h": 8 },
+      "targets": [{
+        "expr": "increase(alertmind_investigations_total[24h])",
+        "legendFormat": "{{severity}}"
+      }]
+    },
+    {
+      "id": 7,
+      "title": "Queue Depth",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 12, "w": 12, "h": 6 },
+      "targets": [{
+        "expr": "alertmind_queue_depth",
+        "legendFormat": "{{queue}} {{status}}"
+      }]
+    },
+    {
+      "id": 8,
+      "title": "AI Tokens Used",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 12, "w": 12, "h": 6 },
+      "targets": [{
+        "expr": "rate(alertmind_ai_tokens_used_total[5m])",
+        "legendFormat": "{{model}} {{type}}"
+      }]
+    },
+    {
+      "id": 9,
+      "title": "Cache Hit Rate",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 18, "w": 12, "h": 6 },
+      "targets": [
+        {
+          "expr": "rate(alertmind_cache_hits_total[5m])",
+          "legendFormat": "Hits — {{key_prefix}}"
+        },
+        {
+          "expr": "rate(alertmind_cache_misses_total[5m])",
+          "legendFormat": "Misses — {{key_prefix}}"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "AI Agent Duration by Agent",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 18, "w": 12, "h": 6 },
+      "targets": [{
+        "expr": "histogram_quantile(0.95, rate(alertmind_ai_agent_duration_seconds_bucket[5m]))",
+        "legendFormat": "{{agent}} P95"
+      }]
+    }
+  ]
+}
